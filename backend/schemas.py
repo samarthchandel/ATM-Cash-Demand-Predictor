@@ -1,11 +1,12 @@
+
 from pydantic import BaseModel, Field
 
-
 class PredictionRequest(BaseModel):
-    total_withdrawals: float = Field(..., ge=0)
-    total_deposits: float = Field(..., ge=0)
-    holiday_flag: int = Field(..., ge=0, le=1)
-    special_event_flag: int = Field(..., ge=0, le=1)
+    total_withdrawals: float = Field(ge=0)
+    total_deposits: float = Field(ge=0)
+    holiday_flag: int
+    special_event_flag: int
+
 
 
 class RegisterRequest(BaseModel):

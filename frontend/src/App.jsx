@@ -604,7 +604,10 @@ if (!token) {
                   <label>Total Withdrawals</label>
                   <input
                     type="number"
+                    min="0"
+                    step="any"
                     value={withdrawals}
+                    
                     onChange={(event) => setWithdrawals(event.target.value)}
                     placeholder="Enter total withdrawals"
                     required
@@ -615,6 +618,8 @@ if (!token) {
                   <label>Total Deposits</label>
                   <input
                     type="number"
+                    min="0"
+                    step="any"
                     value={deposits}
                     onChange={(event) => setDeposits(event.target.value)}
                     placeholder="Enter total deposits"
