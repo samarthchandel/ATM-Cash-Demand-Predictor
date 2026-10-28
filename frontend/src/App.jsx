@@ -38,6 +38,7 @@ const [authMessage, setAuthMessage] = useState("");
     const [specialEvent, setSpecialEvent] = useState("0");
 
     const [prediction, setPrediction] = useState(null);
+    const [isPredicting, setIsPredicting] = useState(false);
     const [predictionError, setPredictionError] = useState("");
 
     // Prediction history
@@ -238,6 +239,7 @@ if (password !== confirmPassword) {
 
       setPrediction(null);
       setPredictionError("");
+      setIsPredicting(true);
 
       try {
         const response = await fetch("http://127.0.0.1:8000/predict", {
@@ -263,7 +265,9 @@ if (password !== confirmPassword) {
         setPrediction(data.predicted_cash_demand);
         await loadHistory();
       } catch (err) {
-        setPredictionError(err.message);
+        setPredictionError(err.message || "Could not generate a prediction. Please try again.");
+      } finally {
+        setIsPredicting(false);
       }
     };
 
@@ -320,6 +324,8 @@ if (!token) {
     <div className="app">
       <div className="login-container">
         <div className="login-card">
+          <div className="login-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" /></svg></div>
+          <p className="login-kicker">SMART CASH OPERATIONS</p>
           <h1>ATM Cash Demand Predictor</h1>
 
           <p className="description">
@@ -427,7 +433,13 @@ if (!token) {
     return (
       <div className="app">
         <header className="navbar">
-          <h1>ATM Cash Demand Predictor</h1>
+          <div className="brand-lockup">
+            <div className="brand-mark" aria-hidden="true">ATM</div>
+            <div>
+              <h1>Cashflow<span>IQ</span></h1>
+              <p>ATM cash demand forecasting</p>
+            </div>
+          </div>
 
           <div className="navbar-actions">
             {isAdmin && (
@@ -556,6 +568,15 @@ if (!token) {
             USER DASHBOARD
           ========================= */
           <main className="dashboard">
+            <section className="page-intro">
+              <div>
+                <p className="page-eyebrow">OPERATIONS OVERVIEW</p>
+                <h2>Cash demand dashboard</h2>
+                <p>Turn transaction activity into a clearer plan for tomorrow.</p>
+              </div>
+              <div className="live-status"><span className="status-dot" /> Forecast workspace</div>
+            </section>
+
             {/* Analytics */}
             <section className="stats-grid">
               <div className="stat-card">
@@ -592,17 +613,23 @@ if (!token) {
             </section>
 
             {/* Prediction form */}
-            <section className="card">
-              <h2>Cash Demand Prediction</h2>
+            <section className="card prediction-panel">
+              <div className="prediction-heading">
+                <div className="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18V6m0 12h16M7 14l4-4 3 2 5-6" /></svg></div>
+                <div>
+                  <h2>Cash demand prediction</h2>
               <p className="description">
                 Enter the previous day's ATM transaction details to predict the
-                next day's cash demand.
-              </p>
+                next day's cash demand. Enter amounts in Indian rupees.
+                  </p>
+                </div>
+              </div>
 
-              <form onSubmit={handlePrediction}>
+              <form className="prediction-form" onSubmit={handlePrediction}>
                 <div className="form-group">
-                  <label>Total Withdrawals</label>
+                  <label htmlFor="total-withdrawals">Total withdrawals <span>(₹)</span></label>
                   <input
+                    id="total-withdrawals"
                     type="number"
                     min="0"
                     step="any"
@@ -615,8 +642,9 @@ if (!token) {
                 </div>
 
                 <div className="form-group">
-                  <label>Total Deposits</label>
+                  <label htmlFor="total-deposits">Total deposits <span>(₹)</span></label>
                   <input
+                    id="total-deposits"
                     type="number"
                     min="0"
                     step="any"
@@ -628,8 +656,9 @@ if (!token) {
                 </div>
 
                 <div className="form-group">
-                  <label>Holiday</label>
+                  <label htmlFor="holiday-flag">Is tomorrow a holiday?</label>
                   <select
+                    id="holiday-flag"
                     value={holiday}
                     onChange={(event) => setHoliday(event.target.value)}
                   >
@@ -639,8 +668,9 @@ if (!token) {
                 </div>
 
                 <div className="form-group">
-                  <label>Special Event</label>
+                  <label htmlFor="special-event-flag">Is there a special event?</label>
                   <select
+                    id="special-event-flag"
                     value={specialEvent}
                     onChange={(event) => setSpecialEvent(event.target.value)}
                   >
@@ -649,26 +679,30 @@ if (!token) {
                   </select>
                 </div>
 
-                <button type="submit" className="predict-button">
-                  Predict Cash Demand
+                <button type="submit" className="predict-button" disabled={isPredicting}>
+                  {isPredicting ? <><span className="button-spinner" /> Generating forecast…</> : <>Generate forecast <span aria-hidden="true">↗</span></>}
                 </button>
               </form>
 
-              {prediction !== null && (
-                <div className="prediction-result">
-                  <h3>Predicted Cash Demand</h3>
-                  <p>₹{Number(prediction).toLocaleString("en-IN")}</p>
-                </div>
-              )}
-
-              {predictionError && <p className="error">{predictionError}</p>}
+              <aside className={`prediction-result ${prediction !== null ? "has-result" : "is-empty"}`} aria-live="polite">
+                <div className="result-topline"><span className="result-indicator" /> {prediction !== null ? "Forecast generated" : "Your forecast"}</div>
+                <h3>Predicted cash demand</h3>
+                {prediction !== null ? (
+                  <p className="result-amount">₹{Number(prediction).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+                ) : (
+                  <p className="result-placeholder">₹ — — —</p>
+                )}
+                <p className="result-note">{prediction !== null ? "Use this estimate as a planning input, alongside local operational knowledge." : "Your estimate will appear here after you generate a forecast."}</p>
+                <div className="result-footnote"><span className="result-footnote-mark">i</span><span>Model output is an estimate, not a guarantee of actual cash demand.</span></div>
+              </aside>
+              {predictionError && <p className="error prediction-error" role="alert">{predictionError}</p>}
             </section>
 
             {/* Charts */}
             {history.length > 0 && (
               <>
-                <section className="card chart-card">
-                  <h2>Cash Demand Trend</h2>
+                <section className="card chart-card trend-chart">
+                  <h2>Cash demand trend</h2>
                   <p className="description">
                     Predicted cash demand across your prediction history.
                   </p>
@@ -676,46 +710,46 @@ if (!token) {
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
+                      <YAxis tickFormatter={(value) => `₹${Number(value).toLocaleString("en-IN")}`} />
+                      <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Amount"]} />
                       <Legend />
                       <Line
                         type="monotone"
                         dataKey="demand"
                         name="Predicted Cash Demand"
-                        stroke="#2563eb"
+                        stroke="#0c7567"
                         strokeWidth={3}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </section>
 
-                <section className="card chart-card">
-                  <h2>Withdrawals vs Predicted Demand</h2>
+                <section className="card chart-card comparison-chart">
+                  <h2>Withdrawals vs. predicted demand</h2>
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
+                      <YAxis tickFormatter={(value) => `₹${Number(value).toLocaleString("en-IN")}`} />
+                      <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Amount"]} />
                       <Legend />
-                      <Bar dataKey="withdrawals" name="Withdrawals" fill="#8884d8" />
-                      <Bar dataKey="demand" name="Predicted Demand" fill="#82ca9d" />
+                      <Bar dataKey="withdrawals" name="Withdrawals" fill="#9abdb2" radius={[5, 5, 0, 0]} />
+                      <Bar dataKey="demand" name="Predicted Demand" fill="#0c7567" radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </section>
 
-                <section className="card chart-card">
-                  <h2>Deposits vs Predicted Demand</h2>
+                <section className="card chart-card comparison-chart">
+                  <h2>Deposits vs. predicted demand</h2>
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
+                      <YAxis tickFormatter={(value) => `₹${Number(value).toLocaleString("en-IN")}`} />
+                      <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Amount"]} />
                       <Legend />
-                      <Bar dataKey="deposits" name="Deposits" fill="#ffc658" />
-                      <Bar dataKey="demand" name="Predicted Demand" fill="#ff8042" />
+                      <Bar dataKey="deposits" name="Deposits" fill="#d8b55b" radius={[5, 5, 0, 0]} />
+                      <Bar dataKey="demand" name="Predicted Demand" fill="#0c7567" radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </section>
@@ -744,7 +778,11 @@ if (!token) {
               {historyError && <p className="error">{historyError}</p>}
 
               {!loadingHistory && history.length === 0 && !historyError && (
-                <p>No prediction history found.</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon" aria-hidden="true">↗</div>
+                  <h3>Your history starts here</h3>
+                  <p>Generate your first forecast and it will be saved here for easy reference.</p>
+                </div>
               )}
 
               {history.length > 0 && (
